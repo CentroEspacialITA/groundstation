@@ -1,19 +1,35 @@
 import rclpy
 from rclpy.node import Node
-from inputs import get_gamepad
+import pygame
+from pygame.locals import *
 
 from deepracer_interfaces_pkg.msg import ServoCtrlMsg
 from deepracer_ctrl import constants
 import math
 
+
+
+# Dimensões da tela
+WIDTH = 800
+HEIGHT = 600
+
 class DeepracerCtrlNode(Node):
     def __init__(self):
         super().__init__('deepracer_ctrl_node')
         self.publisher_ = self.create_publisher(ServoCtrlMsg, '/ctrl_pkg/servo_msg', 1)
-        timer_period = 0.2
+        timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+            print("Joystick name: ", self.joystick.get_name())
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.clock = pygame.time.Clock()
+        font = pygame.font.Font(None, 24)
+        
 
     def get_rescaled_manual_speed(categorized_throttle, max_speed_pct):
         """Return the non linearly rescaled speed value based on the max_speed_pct.
@@ -129,12 +145,15 @@ class DeepracerCtrlNode(Node):
         return angle
 
     def timer_callback(self):
+        pygame.event.pump()
         # Send current joystick status
-        events = get_gamepad()
-        for event in events:
-            print(event.ev_type, event.code, event.state)
-            print("\n")
-
+        print("Axis X:", self.joystick.get_axis(0))
+        print("Axis Y:", self.joystick.get_axis(1))
+        print("Axis Z:", self.joystick.get_axis(2))
+                
+        # Atualiza a tela
+        pygame.display.flip()
+        self.clock.tick(60)  # Limita a taxa de atualização da tela a 60 FPS
 
 def main(args=None):
         rclpy.init(args=args)

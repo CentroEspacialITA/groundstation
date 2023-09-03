@@ -133,6 +133,7 @@ class DeepracerCtrlNode(Node):
         events = get_gamepad()
         for event in events:
             print(event.ev_type, event.code, event.state)
+            print("\n")
 
 
 def main(args=None):

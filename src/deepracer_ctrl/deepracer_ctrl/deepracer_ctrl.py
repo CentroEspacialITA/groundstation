@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from inputs import get_gamepad
 
-from conceptio_msgs.msg import DeepracerCtrl
+from deepracer_interfaces_pkg import ServoCtrlMsg
 from deepracer_ctrl import constants
 import math
 

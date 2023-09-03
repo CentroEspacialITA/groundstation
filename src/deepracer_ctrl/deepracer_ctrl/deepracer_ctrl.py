@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.node import Node
-import pygame
-from pygame.locals import *
+from inputs import get_gamepad
 
 from conceptio_msgs.msg import DeepracerCtrl
 from deepracer_ctrl import constants
@@ -14,12 +13,6 @@ class DeepracerCtrlNode(Node):
         timer_period = 0.2
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        pygame.init()
-        pygame.joystick.init()
-        if pygame.joystick.get_count() > 0:
-            self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
-            print("Joystick name: ", joystick.get_name())
 
 
     def get_rescaled_manual_speed(categorized_throttle, max_speed_pct):
@@ -137,9 +130,9 @@ class DeepracerCtrlNode(Node):
 
     def timer_callback(self):
         # Send current joystick status
-        print("Axis X:", self.joystick.get_axis(0))
-        print("Axis Y:", self.joystick.get_axis(1))
-        print("Axis Z:", self.joystick.get_axis(2))
+        events = get_gamepad()
+        for event in events:
+            print(event.ev_type, event.code, event.state)
 
 
 def main(args=None):

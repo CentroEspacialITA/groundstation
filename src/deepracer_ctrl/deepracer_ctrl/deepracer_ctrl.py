@@ -2,14 +2,14 @@ import rclpy
 from rclpy.node import Node
 from inputs import get_gamepad
 
-from deepracer_interfaces_pkg import ServoCtrlMsg
+from deepracer_interfaces_pkg.msg import ServoCtrlMsg
 from deepracer_ctrl import constants
 import math
 
 class DeepracerCtrlNode(Node):
     def __init__(self):
         super().__init__('deepracer_ctrl_node')
-        self.publisher_ = self.create_publisher(DeepracerCtrl, '/ctrl_pkg/servo_msg', 1)
+        self.publisher_ = self.create_publisher(ServoCtrlMsg, '/ctrl_pkg/servo_msg', 1)
         timer_period = 0.2
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0

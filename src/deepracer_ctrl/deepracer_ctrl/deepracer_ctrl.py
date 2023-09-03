@@ -1,10 +1,15 @@
 import rclpy
-from rclpy.node import Node
-from pyjoystick.sdl2 import Key, Joystick, run_event_loop
+import pygame
+from pygame.locals import *
 
 from deepracer_interfaces_pkg.msg import ServoCtrlMsg
 from deepracer_ctrl import constants
 import math
+
+# Dimensões da tela
+WIDTH = 800
+HEIGHT = 600
+
 
 class DeepracerCtrlNode(Node):
     def __init__(self):
@@ -13,7 +18,16 @@ class DeepracerCtrlNode(Node):
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        run_event_loop(print_add, print_remove, key_received)
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+            print("Joystick name: ", self.joystick.get_name())
+        
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.clock = pygame.time.Clock()
+        font = pygame.font.Font(None, 24)
 
     def get_rescaled_manual_speed(categorized_throttle, max_speed_pct):
         """Return the non linearly rescaled speed value based on the max_speed_pct.
@@ -129,23 +143,16 @@ class DeepracerCtrlNode(Node):
         return angle
 
 
-    def print_add(joy):
-        print('Added', joy)
-
-    def print_remove(joy):
-        print('Removed', joy)
-
-    def key_received(key):
-        print('Key:', key)
-        if key.keytype == Key.BUTTON and key.number == 0:
-            if key.value == 1:
-                # Button 0 pressed
-                print("Do action!")
-            else:
-                # Button 0 released
-                pass
-        if key.keytype == Key.AXIS:
-            print("received from axis", key.value)
+    def timer_callback(self):
+        pygame.event.pump()
+        # Send current joystick status
+        print("Axis X:", self.joystick.get_axis(0))
+        print("Axis Y:", self.joystick.get_axis(1))
+        print("Axis Z:", self.joystick.get_axis(2))
+                
+        # Atualiza a tela
+        pygame.display.flip()
+        self.clock.tick(60)  # Limita a taxa de atualização da tela a 60 FPS
 
 
 def main(args=None):

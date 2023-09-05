@@ -1,8 +1,10 @@
 import rclpy
+from rclpy.node import Node
 import pygame
 from pygame.locals import *
 
 from deepracer_interfaces_pkg.msg import ServoCtrlMsg
+from conceptio_msgs.msg import CapellaTrigger
 from deepracer_ctrl import constants
 import math
 
@@ -15,7 +17,8 @@ class DeepracerCtrlNode(Node):
     def __init__(self):
         super().__init__('deepracer_ctrl_node')
         self.publisher_ = self.create_publisher(ServoCtrlMsg, '/ctrl_pkg/servo_msg', 1)
-        timer_period = 0.1
+        self.capella_publisher_ = self.create_publisher(CapellaTrigger, '/conceptio/capella/triggers', 10)
+        timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
         pygame.init()
@@ -25,11 +28,24 @@ class DeepracerCtrlNode(Node):
             self.joystick.init()
             print("Joystick name: ", self.joystick.get_name())
         
+       
+        
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         font = pygame.font.Font(None, 24)
+        print("Please let go of the stick and press any key to calibrate it")
+        while(True):
+            pygame.event.pump()
+            evt = pygame.event.wait()
+            while(evt.type != JOYBUTTONUP):
+                evt = pygame.event.wait()
+            self.joystick_idle0 = self.joystick.get_axis(0)
+            self.joystick_idle1 = self.joystick.get_axis(1)
+            break
 
-    def get_rescaled_manual_speed(categorized_throttle, max_speed_pct):
+
+
+    def get_rescaled_manual_speed(self, categorized_throttle, max_speed_pct):
         """Return the non linearly rescaled speed value based on the max_speed_pct.
 
         Args:
@@ -107,7 +123,7 @@ class DeepracerCtrlNode(Node):
             speed_mapping_coefficients["b"] * abs(categorized_throttle))
 
 
-    def get_categorized_manual_throttle(throttle):
+    def get_categorized_manual_throttle(self, throttle):
         """Return the value of the category in which the input throttle belongs to.
 
         Args:
@@ -125,7 +141,7 @@ class DeepracerCtrlNode(Node):
         return throttle
 
 
-    def get_categorized_manual_angle(angle):
+    def get_categorized_manual_angle(self, angle):
         """Return the value of the category in which the input angle belongs to.
 
         Args:
@@ -144,11 +160,41 @@ class DeepracerCtrlNode(Node):
 
 
     def timer_callback(self):
+        msg = ServoCtrlMsg()
         pygame.event.pump()
+        joystick_axis0 = self.joystick.get_axis(0)
+        joystick_axis1 = self.joystick.get_axis(1)
+        
+        msg.angle = -1.0 * self.get_categorized_manual_angle(joystick_axis0)
+        categorized_throttle = self.get_categorized_manual_throttle(joystick_axis1)
+        max_speed = 0.5
+        msg.throttle = -1.0 * self.get_rescaled_manual_speed(categorized_throttle, max_speed)
+        self.publisher_.publish(msg)
+        
+        trigger_msg = CapellaTrigger()
+        trigger_msg.target = "State Machine 1"
+        trigger_msg.source = ""
+       
+        if joystick_axis0 > self.joystick_idle0 + 0.03:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetTurnRight"
+        elif joystick_axis0 < self.joystick_idle0 - 0.03:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetTurnLeft"
+        else:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetStopWheel"
+        self.capella_publisher_.publish(trigger_msg)
+
+        if joystick_axis1 > self.joystick_idle1 + 0.03:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetMoveBack"
+        elif joystick_axis1 < self.joystick_idle1 - 0.03:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetFowardMovement"
+        else:
+            trigger_msg.trigger = "OpDeepRacerCMDs_SetStop"
+        self.capella_publisher_.publish(trigger_msg)
+     
+        
         # Send current joystick status
-        print("Axis X:", self.joystick.get_axis(0))
-        print("Axis Y:", self.joystick.get_axis(1))
-        print("Axis Z:", self.joystick.get_axis(2))
+        print("Axis X:", joystick_axis0)
+        print("Axis Y:", joystick_axis1)
                 
         # Atualiza a tela
         pygame.display.flip()
